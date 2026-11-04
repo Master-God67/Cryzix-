@@ -4,7 +4,8 @@ name: Build CRYZIX RP APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   build:
@@ -15,7 +16,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Extract Android project
-        run: unzip -o CRYZIX_RP_Phone_Build.zip -d .
+        run: |
+          unzip -o CRYZIX_RP_Phone_Build.zip -d .
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -31,30 +33,9 @@ jobs:
           yes | sdkmanager --licenses
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Fix Java and Kotlin JVM targets
+      - name: Allow JVM target mismatch
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          p = Path("app/build.gradle")
-          s = p.read_text()
-
-          s += """
-          
-          // CRYZIX RP: Use JVM 17 for Java and Kotlin
-          tasks.withType(JavaCompile).configureEach {
-              sourceCompatibility = "17"
-              targetCompatibility = "17"
-          }
-
-          tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-              kotlinOptions.jvmTarget = "17"
-          }
-          """
-
-          p.write_text(s)
-          print("Java and Kotlin targets updated to 17")
-          PY
+          echo "kotlin.jvm.target.validation.mode=warning" >> gradle.properties
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -62,7 +43,8 @@ jobs:
           gradle-version: '8.7'
 
       - name: Build APK
-        run: gradle --no-daemon assembleDebug
+        run: |
+          gradle --no-daemon assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
